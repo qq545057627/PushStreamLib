@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/PushStreamDemo.iml" filepath="$PROJECT_DIR$/PushStreamDemo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/PushStreamlib/PushStreamlib.iml" filepath="$PROJECT_DIR$/PushStreamlib/PushStreamlib.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
