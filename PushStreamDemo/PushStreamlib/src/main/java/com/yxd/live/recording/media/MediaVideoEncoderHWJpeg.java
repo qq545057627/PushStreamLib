@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1) 
+@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
 public class MediaVideoEncoderHWJpeg implements Runnable{
 	private final String LOG_TAG = "MediaVideoEncoderJpeg";
 	private static MediaVideoEncoderHWJpeg instance = null;
@@ -24,22 +24,22 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 
 	private static final String MIME_TYPE = "video/avc";    // H.264 Advanced Video Coding
 	private static final int IFRAME_INTERVAL = 2;           // 5 seconds between I-frames
-	
+
 	private int mWidth = 960;
 	private int mHeight = 544;
-	
+
 	private ByteBuffer[] mInputBuffers  = null;
 	private ByteBuffer[] mOutputBuffers = null;
 
 	private MediaCodec  mVideoEncoder = null;
 	private MediaFormat mOutputFormat = null;
-	
+
 	private byte[] mJpegI420Data = null;
 	private byte[] mJpegNV12Data = null;
 	private String mJpegFilePath = null;
 
 	private byte[]  mSpsPpsHeadData = null;
-	
+
 	private long mLastTimeStampMs = 0;
 
 	private int mCurrentAPIVersion = Build.VERSION.SDK_INT;
@@ -49,7 +49,7 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 	private boolean m_bStopRequest = false;
 
 	private int mColorFormat = 0;
-	
+
 	private long mCurrentTimestampMs = 0;
 	private long mDeltaTimestampMs = 0;
 	private long mAverageDeltaTimestampMs = 0;
@@ -62,32 +62,32 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 		mInputBuffers = null;
 		mOutputBuffers = null;
 		mVideoEncoder = null;
-		
+
 		mJpegI420Data = null;
 		mJpegNV12Data = null;
 		mJpegFilePath = null;
 
 		mSpsPpsHeadData = null;
-		
+
 		mLastTimeStampMs = 0;
 
 		m_bStopRequest = false;
 
 		mColorFormat = 0;
-		
+
 		mAbsTimestampMs = 0;
 		mCurrentTimestampMs = 0;
 		mDeltaTimestampMs = 0;
 		mAverageDeltaTimestampMs = 0;
 	}
-	
+
 	public static MediaVideoEncoderHWJpeg getInstance(){
 		if (instance == null) {
 			instance = new MediaVideoEncoderHWJpeg();
 		}
 		return instance;
 	}
-	
+
 	public static void destroyInstance()
 	{
 		if (instance != null) {
@@ -96,10 +96,10 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 		}
 	}
 
-	public void init(int width, int height, int bitrate, int frameRate, String jpegFilePath) 
+	public void init(int width, int height, int bitrate, int frameRate, String jpegFilePath)
 	{
 		LogUtils.i(LOG_TAG, "[init]: Enter init");
-		
+
 		if (width < 0 || width > 1920) {
 			throw new IllegalArgumentException("[MediaVideoCapture] param(width) invalid");
 		}
@@ -109,11 +109,11 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 			throw new IllegalArgumentException("[MediaVideoCapture] param(height) invalid");
 		}
 		mHeight = height;
-		
+
 		mJpegFilePath = jpegFilePath;
-		
+
 		mColorFormat = GlobalUtils.getSupportedColorFormat();
-		
+
 		try {
 			mVideoEncoder = MediaCodec.createEncoderByType(MIME_TYPE);
 		} catch (IOException e) {
@@ -143,35 +143,36 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 		if (mJpegNV12Data == null) {
 			mJpegNV12Data = new byte [width * height * 3 / 2 + 1];
 		}
-		
-		int cpuNum = GlobalUtils.getCPUCores();
-		if (cpuNum % 4 != 0) {
-			cpuNum = (cpuNum / 4) * 4;
-		}
-		LogUtils.i(LOG_TAG, "cpu number is " + cpuNum);
-		PictureUtils.nativeInit(cpuNum);
-		
+
+//		int cpuNum = GlobalUtils.getCPUCores();
+//		if (cpuNum % 4 != 0) {
+//			cpuNum = (cpuNum / 4) * 4;
+//		}
+//		LogUtils.i(LOG_TAG, "cpu number is " + cpuNum);
+//		PictureUtils.nativeInit(cpuNum);
+		PictureUtils.nativeInit(1);
+
 		mAverageDeltaTimestampMs = 1000 / frameRate;
 	}
-	
-	
-	public boolean start() 
+
+
+	public boolean start()
 	{
 		LogUtils.i(LOG_TAG, "[start]: Enter start");
-		
+
 		int result = JpegUtils.nativeJpegToI420Scale(mJpegFilePath, mJpegI420Data, mWidth, mHeight);
 		if (result < 0) {
 			LogUtils.e(LOG_TAG, "Decode Jpeg File to I420 Data error!");
 		}
 		PictureUtils.nativeI420ToNV12(mJpegI420Data, mWidth, mJpegNV12Data, mWidth, mWidth, mHeight);
-		
+
 		mVideoEncoder.start();
 
 		// if API level <= 20, get input and output buffer arrays here
 		// see http://developer.android.com/reference/android/media/MediaCodec.html for more details.
 		mInputBuffers   = mVideoEncoder.getInputBuffers();
-		mOutputBuffers  = mVideoEncoder.getOutputBuffers();   
-		
+		mOutputBuffers  = mVideoEncoder.getOutputBuffers();
+
 		mVideoEncoderJpegThread = new Thread(this);
 		mVideoEncoderJpegThread.start();
 
@@ -180,11 +181,11 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 		return true;
 	}
 
-	public boolean stop() 
+	public boolean stop()
 	{
 		LogUtils.i(LOG_TAG, "[reset] Enter reset");
 		m_bStopRequest = true;
-		
+
 		try {
 			mVideoEncoderJpegThread.join();
 		} catch (InterruptedException e) {
@@ -198,12 +199,12 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 			LogUtils.e(LOG_TAG, "MediaCodec reset IllegalStateException" + e.toString());
 		}
 		mVideoEncoder.release();
-		
+
 		LogUtils.i(LOG_TAG, "[reset] Leave reset");
 
 		return true;
 	}
-	
+
 	@Override
 	public void run() {
 		while (!m_bStopRequest) {
@@ -221,7 +222,7 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 				mLastTimeStampMs = mCurrentTimestampMs;
 				LogUtils.i(LOG_TAG, "mLastTimeStampMs is " + mLastTimeStampMs);
 				mAbsTimestampMs += mDeltaTimestampMs;
-				
+
 				BufferUnit bufUnit =  new BufferUnit();
 				if (mColorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) {
 					bufUnit.setData(mJpegI420Data);
@@ -241,7 +242,7 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 					e.printStackTrace();
 				}
 			}
-			
+
 		}
 	}
 
@@ -250,7 +251,7 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 	{
 		LogUtils.i(LOG_TAG, "[setInput]: Enter setInput()\n");
 		if (!m_bStopRequest) {
-	        int inputBufferIndex = -1;
+			int inputBufferIndex = -1;
 			try {
 				inputBufferIndex = mVideoEncoder.dequeueInputBuffer(kCodecBufferDequeueTimeout);
 			} catch (IllegalStateException exception) {
@@ -263,7 +264,7 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 				// see http://developer.android.com/reference/android/media/MediaCodec.html for more details.
 				ByteBuffer inputBuffer = mInputBuffers[inputBufferIndex];
 				inputBuffer.clear();
-				inputBuffer.put(bufUnit.getData(), 0, bufUnit.getLength());   
+				inputBuffer.put(bufUnit.getData(), 0, bufUnit.getLength());
 
 				LogUtils.d(LOG_TAG, "[setInput]: get video raw sample pts = " + bufUnit.getPts() + " inputBuffer position = " + inputBuffer.position() + " capacity = " + inputBuffer.capacity());
 
@@ -273,7 +274,7 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 				} catch (IllegalStateException exception) {
 					LogUtils.e(LOG_TAG, "queueInputBuffer " + exception.toString());
 				}
-				
+
 			} else {
 				LogUtils.d(LOG_TAG, "[setInput] MediaCodec.dequeueInputBuffer inputBufferIndex =" + inputBufferIndex);
 				return -1;
@@ -281,9 +282,9 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 
 			return bufUnit.getLength();
 		}
-		return 0;	
+		return 0;
 	}
-	
+
 	private int getOutput(BufferUnit bufUnit)
 	{
 		LogUtils.i(LOG_TAG, "[getOutput]: Enter getOutput()");
@@ -296,12 +297,12 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 				LogUtils.e(LOG_TAG, "dequeueOutputBuffer " + exception.toString());
 			}
 			if (outputBufferIndex >= 0) {
-				LogUtils.d(LOG_TAG, "[getOutput]: MediaCodec.dequeueOutputBuffer() OK" + 
+				LogUtils.d(LOG_TAG, "[getOutput]: MediaCodec.dequeueOutputBuffer() OK" +
 						" offset =" +  bufferInfo.offset + " size = " + bufferInfo.size + " pts =" + (bufferInfo.presentationTimeUs/1000) );
 
 				ByteBuffer outputBuffer = null;
 				// see http://developer.android.com/reference/android/media/MediaCodec.html for more details.
-				outputBuffer = mOutputBuffers[outputBufferIndex]; 
+				outputBuffer = mOutputBuffers[outputBufferIndex];
 
 				outputBuffer.position(bufferInfo.offset);
 				outputBuffer.limit(bufferInfo.offset + bufferInfo.size);
@@ -314,11 +315,11 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 					outputBuffer.get(mSpsPpsHeadData, 0, bufferInfo.size);
 					outputBuffer.position(bufferInfo.offset);
 					outputBuffer.clear();
-					outputBuffer.get(mSpsPpsHeadData, bufferInfo.offset, bufferInfo.size);	
+					outputBuffer.get(mSpsPpsHeadData, bufferInfo.offset, bufferInfo.size);
 					LogUtils.i(LOG_TAG, "video config data is " + Arrays.toString(mSpsPpsHeadData));
 
 //					MediaRtmpPublisher.getInstance().addVideoConfigData(mSpsPpsHeadData, bufferInfo.size);
-					
+
 					try {
 						mVideoEncoder.releaseOutputBuffer(outputBufferIndex, false);
 					} catch (IllegalStateException exception) {
@@ -336,29 +337,29 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 					outputBuffer.get(outData, 0, bufferInfo.size);
 					outputBuffer.position(bufferInfo.offset);
 					outputBuffer.clear();
-					
+
 					// write buffer attributes using property in current mediacodec BufferInfo
 					bufUnit.setLength(bufferInfo.size);
-					bufUnit.setPts((bufferInfo.presentationTimeUs/1000));     
+					bufUnit.setPts((bufferInfo.presentationTimeUs/1000));
 					bufUnit.setFlags(bufferInfo.flags);
-			
+
 					long absTimeStampMs = bufferInfo.presentationTimeUs / 1000;
-					
+
 					LogUtils.i(LOG_TAG, "sent " + bufferInfo.size + " bytes to muxer, ts=" +
 							absTimeStampMs);
-				
+
 					MediaRtmpPublisher.getInstance().addVideoRawData(outData, bufferInfo.size, absTimeStampMs);
-					
+
 					try {
 						mVideoEncoder.releaseOutputBuffer(outputBufferIndex, false);
 					} catch (IllegalStateException exception) {
 						LogUtils.e(LOG_TAG, "releaseOutputBuffer " + exception.toString());
 					}
-					
+
 
 					return bufferInfo.size;
 				}
-				
+
 			} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 
 				LogUtils.d(LOG_TAG, "[getOutput]: MediaCodec.dequeueOutputBuffer() INFO_OUTPUT_BUFFERS_CHANGED\n");
@@ -368,11 +369,11 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 				return -1;
 			} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
 
-				LogUtils.d(LOG_TAG, "[getOutput] MediaCodec.dequeueOutputBuffer() INFO_OUTPUT_FORMAT_CHANGED New format" 
+				LogUtils.d(LOG_TAG, "[getOutput] MediaCodec.dequeueOutputBuffer() INFO_OUTPUT_FORMAT_CHANGED New format"
 						+ mVideoEncoder.getOutputFormat());
 
-				mOutputFormat = mVideoEncoder.getOutputFormat();   
-				
+				mOutputFormat = mVideoEncoder.getOutputFormat();
+
 //				MediaFFmpegWriter.getInstance().addVideoTrack(mOutputFormat);
 
 				return 0;
@@ -389,6 +390,6 @@ public class MediaVideoEncoderHWJpeg implements Runnable{
 				throw new IllegalStateException("[getOutput] MediaCodec.dequeueOutputBuffer has encountered an error!");
 			}
 		}
-		return 0;	
+		return 0;
 	}
 }
