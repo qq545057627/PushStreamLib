@@ -57,7 +57,7 @@ public class LrMediaRecorder extends AbstractMediaRecoder {
 	private int mVideoBitrate = 950000;
 	private int mFrameRate = 30;
 	private int mIFrameInterval = 2;
-	private int mSampleRate = 16000;
+	public final static int mSampleRate = 16000;
 	private int mAudioBitrate = 64 * 1024;
 	private int mChannel = AudioFormat.CHANNEL_IN_STEREO;
 //	private int mChannel = AudioFormat.CHANNEL_IN_MONO;

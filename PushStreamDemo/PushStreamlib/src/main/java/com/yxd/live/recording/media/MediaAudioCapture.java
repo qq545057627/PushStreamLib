@@ -9,6 +9,7 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.yxd.live.recording.bean.CallBackObject;
 import com.yxd.live.recording.utils.LogUtils;
 
 import java.io.File;
@@ -44,6 +45,16 @@ public class MediaAudioCapture implements Runnable{
 	private byte[] mNsSpFrame = null;
 	private byte[] mNsOutFrame = null;
 	private byte[] mPcmBuffer = null;
+
+	private CallBackObject<byte[]> callBackAudioData;
+
+	public CallBackObject<byte[]> getCallBackAudioData() {
+		return callBackAudioData;
+	}
+
+	public void setCallBackAudioData(CallBackObject<byte[]> callBackAudioData) {
+		this.callBackAudioData = callBackAudioData;
+	}
 
 	private MediaAudioCapture()
 	{
@@ -237,9 +248,15 @@ public class MediaAudioCapture implements Runnable{
 		// TODO Auto-generated method stub
 		while(!m_bStopRequest)
 		{
-			LogUtils.i(TAG, "run() 1++++++++");
+			//LogUtils.i(TAG, "run() 1++++++++");
 			int readSize = mAudioRecorder.read(mRawBuffer, 0, mAudioInputBufferSize);
-			LogUtils.i(TAG, "run() readSize is " + readSize);
+			if(callBackAudioData!=null&&readSize>0){
+				//Log.e("voice", "run: "+mRawBuffer.length+"   mAudioInputBufferSize:"+mAudioInputBufferSize );
+				byte[] cacheAgo=new byte[readSize];
+				System.arraycopy(mRawBuffer,0,cacheAgo,0,readSize);
+				callBackAudioData.CallBackData(cacheAgo);
+			}
+			//LogUtils.i(TAG, "run() readSize is " + readSize);
 			if (readSize <= 0) {
 				if (!m_bStopRequest) {
 					LogUtils.i(TAG, "AudioRecord read size error due to forbid permission of RECORD_AUDIO!");
